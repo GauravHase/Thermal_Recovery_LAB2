@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Thermal Recovery Lab — Engineering Prototype</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#0d1b2e;--line:#274562;--text:#eaf3ff;--muted:#9db4ce;--hot:#ff604d;--cold:#38cfff;--cyan:#00e5ff;--green:#75e6a0}
+*{box-sizing:border-box}
+body{margin:0;background-color:#07111f;} /* Fallback for standalone browser */
+
+/* Isolated container to protect against Notebook CSS overrides */
+#trl-app {
+    background: radial-gradient(ellipse at top,#10243b,var(--bg) 60%);
+    color: var(--text);
+    font: 15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+    min-height: 100vh;
+    padding: 1px;
+    overflow-x: hidden;
+}
+
+#trl-app header{text-align:center;padding:24px 16px;background:#091727;border-bottom:1px solid var(--line)}.eyebrow{color:var(--cyan);font-size:.75rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase}#trl-app h1{font-size:clamp(1.7rem,3vw,2.5rem);margin:5px 0}#trl-app header p,.muted{color:var(--muted)}#trl-app header p{margin:0}
+#trl-app main{max-width:1400px;margin:auto;padding:18px}.toolbar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:18px}
+#trl-app button{border:0;border-radius:8px;padding:10px 14px;background:#1769aa;color:white;font-weight:750;cursor:pointer}#trl-app button:hover{filter:brightness(1.15)}#trl-app button.stop{background:#87333c}#trl-app button.secondary{background:#354252}input[type=range]{accent-color:var(--cyan)}.speed{display:flex;align-items:center;gap:8px;color:var(--muted)}.pill{border:1px solid var(--line);border-radius:999px;padding:7px 11px;color:var(--muted);font-size:.83rem}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8997a7;margin-right:6px}.dot.on{background:var(--green);box-shadow:0 0 10px var(--green)}
+.layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(290px,.8fr);gap:16px}.panel{min-width:0;background:linear-gradient(145deg,#0f2035,#091728);border:1px solid var(--line);border-radius:13px;padding:16px;box-shadow:0 10px 28px #0002}.panel h2{font-size:1.05rem;margin:0 0 8px}.muted{font-size:.88rem;margin:0 0 12px}
+#svgWrapper{background:#081727;border:1px solid #1e3a56;border-radius:10px;overflow:hidden}svg{display:block;width:100%;height:auto}.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:.82rem;margin-top:10px}.swatch{display:inline-block;width:16px;height:3px;margin-right:5px;vertical-align:middle}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.metric{background:#0a192b;border:1px solid #24415d;border-radius:10px;padding:12px;min-width:0}.metric small{display:block;color:var(--muted)}.metric strong{display:block;font-size:clamp(1rem,2vw,1.4rem);overflow-wrap:anywhere;margin-top:3px}.hot{color:var(--hot)}.cold{color:var(--cyan)}.good{color:var(--green)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:flex;justify-content:space-between;gap:6px;font-size:.83rem;margin-bottom:5px}.field label span{color:var(--muted);white-space:nowrap}.field input{width:100%;padding:10px;background:#071525;border:1px solid #35536f;border-radius:7px;color:var(--text);font:inherit}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.error{display:none;padding:10px;margin-top:12px;background:#431f2a;border:1px solid #9b3f50;border-radius:8px;color:#ffd7da}.note{margin-top:14px;padding:11px 13px;border-left:3px solid #4da9e8;background:#0b1d30;border-radius:0 8px 8px 0;color:var(--muted);font-size:.85rem}
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}table{width:100%;border-collapse:collapse;font-size:.86rem}th,td{text-align:left;padding:9px 6px;border-bottom:1px solid #203a54}th{color:#8ed4ff}canvas{display:block;width:100%;height:260px}.explorer-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:12px 0}.explorer-controls .field select,.explorer-controls .field input{width:100%;padding:10px;background:#071525;border:1px solid #35536f;border-radius:7px;color:var(--text);font:inherit}.explorer-results{overflow-x:auto;margin-top:12px}.explorer-results table{min-width:540px}.chart-note{color:var(--muted);font-size:.82rem;margin-top:6px}.sweep-error{display:none;margin-top:10px;padding:10px;background:#431f2a;border:1px solid #9b3f50;border-radius:8px;color:#ffd7da}
+.pass{color:var(--green)}.feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.feature-grid .panel{min-width:0}.feature-grid input,.feature-grid select{width:100%;padding:9px;background:#071525;border:1px solid #35536f;border-radius:7px;color:var(--text);font:inherit}.feature-grid .field{margin:10px 0}.feature-grid .field label{display:flex;justify-content:space-between;gap:8px;font-size:.83rem;margin-bottom:5px}.feature-grid .field label span{color:var(--muted)}.feature-stat{padding:10px;margin-top:10px;border:1px solid #24415d;background:#0a192b;border-radius:8px}.feature-stat strong{display:block;font-size:1.15rem;margin-top:3px;overflow-wrap:anywhere}.feature-output{color:var(--muted);font-size:.84rem;margin-top:10px;white-space:pre-line}.warn{color:#ffd166}.feature-grid button{margin-top:6px}@media(max-width:1000px){.feature-grid{grid-template-columns:1fr}}#trl-app footer{text-align:center;color:#8198b1;font-size:.8rem;padding:24px}
+@media(max-width:950px){.layout,.bottom{grid-template-columns:1fr}}@media(max-width:550px){#trl-app main{padding:10px}.fields{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.panel{padding:12px}.toolbar{justify-content:flex-start}.speed{width:100%}.speed input{flex:1}}
+
+.design-upgrades{margin-top:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.design-upgrades .panel{min-width:0}
+.design-upgrades input,.design-upgrades select{width:100%;padding:9px;background:#071525;border:1px solid #35536f;border-radius:7px;color:var(--text);font:inherit}
+.design-upgrades .field{margin:10px 0}
+.upgrade-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.upgrade-output{padding:10px;margin-top:8px;border:1px solid #24415d;background:#0a192b;border-radius:8px}
+.upgrade-output small{display:block;color:var(--muted)}
+.upgrade-output strong{display:block;font-size:1.1rem;margin-top:3px;overflow-wrap:anywhere}
+.button-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.alert-list{padding:10px;border:1px solid #5c4a2b;background:#211d13;border-radius:8px;color:#ffdc8b;white-space:pre-line;min-height:44px;font-size:.86rem}
+.history-wrap{overflow-x:auto}
+.history-wrap table{min-width:600px}
+.design-upgrades .wide{grid-column:1/-1}
+.design-upgrades h3{margin:14px 0 6px;font-size:.95rem;color:#8ed4ff}
+.design-upgrades .upgrade-grid .field{margin:4px 0}
+.design-upgrades .explorer-controls{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.design-upgrades .explorer-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.design-upgrades{grid-template-columns:1fr}}
+@media print{#trl-app{background:white;color:#111}#trl-app header,.toolbar,button,.speed{display:none!important}.panel,.metric{background:white!important;color:#111!important;box-shadow:none;border:1px solid #bbb}.muted,.feature-output,.note{color:#333!important}#trl-app main{max-width:none;padding:0}.layout,.bottom,.feature-grid,.design-upgrades{display:block}.panel{margin:8px 0;break-inside:avoid}canvas{max-width:100%}}
+
+/* Final cleaned interface: only relevant blocks are shown */
+#foulingPanel,#caseStudyResult,#sizingPanel,#performancePanel,#typePanel,#hydraulicsPanel,#economicsPanel2{display:none!important}
+#phase2{display:block!important;grid-template-columns:1fr;gap:12px}
+#optimizerPanel{display:none!important}
+#optimizerPanel .internal-target-controls{display:none!important}
+.design-target-controls{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#091728}
+.design-target-controls h3{margin:0 0 6px}
+.design-target-controls input{width:100%;padding:9px;background:#071525;border:1px solid #35536f;border-radius:7px;color:var(--text);font:inherit}
+#optimizerPanel .optimizer-assumptions{border:1px solid var(--line);border-radius:10px;padding:10px;margin:12px 0;background:#091728}
+#optimizerPanel .optimizer-assumptions>h3{margin:0 0 5px}
+#optimizerPanel .optimizer-details{border:1px solid #274562;border-radius:8px;margin:8px 0;background:#0b1a2c;overflow:hidden}
+#optimizerPanel .optimizer-details>summary{cursor:pointer;padding:10px 12px;font-weight:700;color:#b9e7ff;list-style:none}
+#optimizerPanel .optimizer-details>summary::-webkit-details-marker{display:none}
+#optimizerPanel .optimizer-details>summary:after{content:"＋";float:right;color:var(--cyan)}
+#optimizerPanel .optimizer-details[open]>summary:after{content:"−"}
+#optimizerPanel .details-body{padding:0 10px 10px}
+#optimizerPanel .details-body .upgrade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#optimizerPanel .details-body .field{margin:8px 0}
+#optimizerPanel .details-body input,#optimizerPanel .details-body select{width:100%;padding:9px;background:#071525;border:1px solid #35536f;border-radius:7px;color:var(--text);font:inherit}
+#optimizerPanel .details-action{margin:8px 0}
+#exportPanel{display:block!important;margin-top:16px}
+#exportPanel .button-row{margin-top:8px}
+#simTime{display:inline!important;visibility:visible!important;min-width:5ch}
+.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+#btnStart{min-width:170px}
+@media(max-width:760px){#optimizerPanel .details-body .upgrade-grid{grid-template-columns:1fr}}
+
+#optimizerPanel .internal-economics-output,
+#optimizerPanel #npvChart,
+#optimizerPanel h3:has(+ #npvChart),
+#optimizerPanel #npvChart + .legend,
+#optimizerPanel .history-wrap,
+#optimizerPanel details.optimizer-details:has(#costFixed),
+#optimizerPanel .field:has(#shellDp),
+#optimizerPanel .field:has(#tubeRough){display:none!important}
+
+.layout,.bottom,.feature-grid,.design-upgrades{align-items:start;align-content:start;grid-auto-rows:min-content}
+.layout>.panel,.bottom>.panel,.feature-grid>.panel,.design-upgrades>.panel{align-self:start;height:auto;min-height:0}
+.layout{grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr)}
+#svgWrapper{max-width:100%}
+.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.guide-card{border:1px solid #274562;border-radius:10px;background:#091a2c;padding:12px;min-width:0}
+.guide-card h3{font-size:.95rem;margin:0 0 5px;color:#bde8ff}
+.guide-card p{margin:0;color:var(--muted);font-size:.9rem}
+.guide-card strong{color:var(--text)}
+.live-badge{display:inline-block;border-radius:999px;padding:3px 8px;background:#173a35;color:#8ff0b7;font-size:.76rem;font-weight:700;margin-bottom:8px}
+#exportPanel{margin-top:20px}
+#exportPanel .muted{max-width:900px}
+@media(max-width:950px){.layout,.bottom{grid-template-columns:1fr}.guide-grid{grid-template-columns:1fr}}
+@media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.tema-note{margin-top:10px;border-left:3px solid var(--accent,#54b6ff)}
+
+#trl-app main{max-width:1680px;padding:12px}
+#trl-app header{padding:16px 12px}
+.toolbar{padding:8px;margin-bottom:12px;gap:8px}
+.layout,.bottom,.feature-grid,.design-upgrades{gap:10px}
+.panel{padding:12px}
+.panel h2{margin-bottom:6px}
+.muted{margin-bottom:8px}
+.metrics{gap:7px;margin-top:9px}
+.metric{padding:8px}
+.fields{gap:8px}
+.field input,.explorer-controls .field select,.explorer-controls .field input{padding:8px}
+.bottom{margin-top:10px}
+canvas{height:210px}
+#designExplorer{margin-top:10px!important}
+.explorer-controls{gap:8px;margin:8px 0}
+.explorer-results{margin-top:8px}
+th,td{padding:6px 5px}
+.note{margin-top:9px;padding:9px 10px}
+.feature-grid{grid-template-columns:minmax(0,1fr);margin-top:10px}
+.feature-grid #economicsPanel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:12px;row-gap:6px;align-content:start}
+#economicsPanel h2,#economicsPanel>p{grid-column:1/-1}
+#economicsPanel .field{margin:3px 0}
+#economicsPanel .feature-stat{margin-top:4px}
+#economicsPanel #annualHeat,#economicsPanel #annualSavings{font-size:1.05rem}
+#economicsPanel #economicsNote{grid-column:1/-1;margin-top:4px}
+.design-upgrades{margin-top:10px}
+#exportPanel{margin-top:10px!important;padding:10px 12px}
+#exportPanel .feature-output{margin-bottom:0}
+@media(max-width:800px){.feature-grid #economicsPanel{grid-template-columns:repeat(2,minmax(0,1fr))}.explorer-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){#trl-app main{padding:8px}.panel{padding:10px}.feature-grid #economicsPanel{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}canvas{height:180px}}
+
+.field input.input-missing,.field select.input-missing,.field textarea.input-missing{border:2px solid #e05252!important;box-shadow:0 0 0 3px rgba(224,82,82,.13);background-color:rgba(224,82,82,.06)}
+.field .field-error{display:block;color:#c73535;font-size:.78rem;font-weight:650;margin-top:5px}
+.field:has(.input-missing) label{color:#c73535}
+</style>
+</head>
+<body>
+<div id="trl-app">
+<header><div class="eyebrow">Interactive thermal engineering lab</div><h1>Thermal Recovery Lab</h1><p>Interactive heat-transfer learning and preliminary exchanger design · live physical explanations</p></header>
+<main>
+<div class="toolbar">
+<button id="btnStart" type="button" aria-pressed="false">▶ Start simulation</button>
+<div class="speed"><label for="animSpeed">Animation speed</label><input id="animSpeed" max="3" min=".5" step=".1" type="range" value="1"/><b id="speedVal">1.0×</b></div>
+<span class="pill"><i class="dot" id="statusDot"></i><b id="statusText">SYSTEM READY</b></span><span class="pill">Time: <b id="simTime">0.0 s</b></span>
+</div>
+<div class="layout">
+<section class="panel"><h2>Heat-exchanger schematic</h2><p class="muted">The schematic illustrates separated hot and cold streams. The selected flow arrangement controls the calculation model.</p>
+<div id="svgWrapper"></div>
+<div class="legend"><span><i class="swatch" style="background:var(--hot)"></i>Hot drain water</span><span><i class="swatch" style="background:var(--cold)"></i>Clean incoming water</span><span><i class="swatch" style="background:#ffd166"></i>Heat transfer</span></div>
+<div class="metrics">
+<div class="metric"><small>Hot outlet</small><strong class="hot" id="outTh">—</strong></div><div class="metric"><small>Clean-water outlet</small><strong class="cold" id="outTc">—</strong></div><div class="metric"><small>Recovered heat duty</small><strong class="good" id="outQ">—</strong></div>
+<div class="metric"><small>Effectiveness</small><strong id="outEff">—</strong></div><div class="metric"><small>NTU</small><strong id="outNtu">—</strong></div><div class="metric"><small>Energy residual</small><strong id="outResidual">—</strong></div>
+</div></section>
+<aside class="panel"><h2>Operating parameters</h2><p class="muted">Change any value to update the results and physical explanation automatically. Units are shown beside each field; use Recalculate if you want to refresh manually.</p>
+<form id="parameterForm"><div class="fields">
+<div class="field"><label for="t_h_in">Hot inlet <span>°C</span></label><input id="t_h_in" required="" step="any" type="number" value="80"/></div>
+<div class="field"><label for="t_c_in">Cold inlet <span>°C</span></label><input id="t_c_in" required="" step="any" type="number" value="15"/></div>
+<div class="field"><label for="m_dot_h">Hot mass flow <span>kg/s</span></label><input id="m_dot_h" min=".000001" required="" step="any" type="number" value=".25"/></div>
+<div class="field"><label for="m_dot_c">Cold mass flow <span>kg/s</span></label><input id="m_dot_c" min=".000001" required="" step="any" type="number" value=".25"/></div>
+<div class="field"><label for="cp_h">Hot specific heat <span>J/(kg·K)</span></label><input id="cp_h" min=".000001" required="" step="any" type="number" value="4180"/></div>
+<div class="field"><label for="cp_c">Cold specific heat <span>J/(kg·K)</span></label><input id="cp_c" min=".000001" required="" step="any" type="number" value="4180"/></div>
+<div class="field" style="grid-column:1/-1"><label for="ua">Conductance, UA <span>W/K</span></label><input id="ua" min="0" required="" step="any" type="number" value="3135"/></div>
+<div class="field" style="grid-column:1/-1"><label for="flowArrangement">Exchanger type</label><select id="flowArrangement"><option value="counter">Counterflow (double-pipe / plate)</option><option value="parallel">Parallel flow (double-pipe)</option><option value="shell1">Shell-and-tube, 1 shell / 2+ tube passes</option><option value="shell2">Shell-and-tube, 2 shells / 4+ tube passes</option><option value="crossBoth">Cross-flow, both fluids unmixed</option><option value="crossCmaxMixed">Cross-flow, Cmax fluid mixed</option><option value="crossCminMixed">Cross-flow, Cmin fluid mixed</option></select><small class="muted" id="typeNote" style="display:block;margin-top:6px"></small></div>
+</div><div class="actions"><button type="submit">Recalculate</button><button class="secondary" id="btnDefaults" type="button">Restore defaults</button></div><div class="error" id="errorBox" role="alert"></div></form>
+<div class="note"><b>Case-study inputs:</b> Hot drain water 80°C at 15 kg/min (= 0.25 kg/s), incoming cold water 15°C, 24 h/day and 365 days/year, furnace efficiency 80%, natural gas $0.40/therm, and 1 therm = 105,500 kJ. The stated 75% hot-side heat recovery is matched by the default UA of about 3,135 W/K only for the default equal hot/cold heat-capacity rates. <b>The problem does not specify cold-water flow or exchanger UA;</b> 0.25 kg/s cold flow is an explicit modelling assumption, not given data. Constant specific heats are assumed; pressure drop, ambient losses, detailed geometry and capital cost are not modelled.</div>
+</aside></div>
+<div class="bottom">
+<section class="panel"><h2>Stream data</h2><table><thead><tr><th>Stream</th><th>Inlet °C</th><th>Outlet °C</th><th>Flow kg/s</th><th>Heat</th></tr></thead><tbody>
+<tr><td>Hot drain water</td><td id="tblThIn">—</td><td id="tblThOut">—</td><td id="tblMh">—</td><td id="tblQh">—</td></tr><tr><td>Clean water</td><td id="tblTcIn">—</td><td id="tblTcOut">—</td><td id="tblMc">—</td><td id="tblQc">—</td></tr></tbody></table><p class="muted" id="balanceStatus">Energy balance will be checked after calculation.</p></section>
+<section class="panel"><h2 id="profileTitle">Counterflow temperature profile</h2><p class="muted" id="profileNote">Numerically integrated idealized temperature profiles for the selected flow arrangement and effective UA. Hot inlet is at x=0; for counterflow, cold inlet is at x=1.</p><canvas aria-label="Counterflow temperature profile chart" id="tempChart"></canvas><div class="legend"><span><i class="swatch" style="background:var(--hot)"></i>Hot stream</span><span><i class="swatch" style="background:var(--cold)"></i>Cold stream</span></div></section>
+</div>
+
+<section class="panel" id="designExplorer" style="margin-top:16px">
+<h2>Interactive design explorer</h2>
+<p class="muted">Sweep one parameter using the clean-UA effectiveness–NTU model while holding all other calculator inputs constant. Fouling degradation is not applied to this explorer sweep. The chart shows calculated heat duty; the table also reports outlet temperatures. Sweep results do not overwrite your operating inputs.</p>
+<div class="explorer-controls">
+<div class="field"><label for="sweepParameter">Parameter to vary</label><select id="sweepParameter">
+<option value="ua">UA — conductance (W/K)</option>
+<option value="m_dot_h">Hot mass flow (kg/s)</option>
+<option value="m_dot_c">Cold mass flow (kg/s)</option>
+<option value="t_h_in">Hot inlet temperature (°C)</option>
+</select></div>
+<div class="field"><label for="sweepMin">Minimum value</label><input id="sweepMin" step="any" type="number" value="500"/></div>
+<div class="field"><label for="sweepMax">Maximum value</label><input id="sweepMax" step="any" type="number" value="6000"/></div>
+<div class="field"><label for="sweepPoints">Number of points</label><input id="sweepPoints" max="101" min="3" step="1" type="number" value="25"/></div>
+</div>
+<div class="actions"><button id="runSweep" type="button">Run parameter sweep</button><button class="secondary" id="resetSweep" type="button">Reset sweep defaults</button></div>
+<div class="sweep-error" id="sweepError" role="alert"></div>
+<div class="chart-wrap" style="margin-top:12px"><canvas aria-label="Heat duty versus selected design parameter" id="sweepChart"></canvas></div>
+<p class="chart-note" id="sweepSummary">Choose a parameter and run the sweep to compare its effect on heat recovery.</p>
+<div class="explorer-results">
+<table><thead><tr><th>Varied parameter</th><th>Heat duty (kW)</th><th>Hot outlet (°C)</th><th>Cold outlet (°C)</th><th>Effectiveness</th></tr></thead><tbody id="sweepTableBody"><tr><td colspan="5">Run a sweep to see results.</td></tr></tbody></table>
+</div>
+<div class="note"><b>Interpretation:</b> This is a steady-state effectiveness–NTU parameter study, not a time-dependent physical experiment. It changes one selected input at a time and keeps the remaining inputs at their current calculator values. UA and flow values are model inputs; no exchanger geometry is inferred.</div>
+</section>
+<section aria-label="Advanced virtual plant features" class="feature-grid">
+<section class="panel" id="economicsPanel">
+<h2>Energy savings estimate</h2>
+<p class="muted">Converts useful recovered heat into avoided furnace fuel input using furnace efficiency, therm energy content and gas price. Editable for other plants and currencies.</p>
+<div class="field"><label for="operatingHours">Operating hours <span>h/day</span></label><input id="operatingHours" max="24" min="0" step="0.5" type="number" value="24"/></div>
+<div class="field"><label for="operatingDays">Operating days <span>days/year</span></label><input id="operatingDays" max="366" min="0" step="1" type="number" value="365"/></div>
+<div class="field"><label for="fuelEfficiency">Furnace efficiency <span>%</span></label><input id="fuelEfficiency" max="100" min="1" step="1" type="number" value="80"/></div>
+<div class="field"><label for="energyPrice">Natural gas price <span>currency/therm</span></label><input id="energyPrice" min="0" step="0.01" type="number" value="0.40"/></div>
+<div class="field"><label for="thermEnergy">Energy per therm <span>kJ/therm</span></label><input id="thermEnergy" min="0.000001" step="any" type="number" value="105500"/></div>
+<div class="field"><label for="currencySymbol">Currency symbol</label><input id="currencySymbol" maxlength="5" type="text" value="$"/></div>
+<div class="feature-stat"><small class="muted">Annual useful heat recovered</small><strong id="annualHeat">—</strong></div>
+<div class="feature-stat"><small class="muted">Estimated annual fuel-cost savings</small><strong class="good" id="annualSavings">—</strong></div>
+<p class="feature-output" id="economicsNote">Gross fuel saving only; pumping, maintenance and installation costs must be evaluated separately before final selection.</p>
+</section>
+</section>
+
+<section aria-label="Engineering sizing, plots, monitoring and exports" class="design-upgrades">
+<section class="panel" id="sizingPanel">
+<div class="design-target-controls"><h3>Design target</h3><p class="muted">Set the desired heat-recovery effectiveness and the assumed overall heat-transfer coefficient for the preliminary area estimate.</p><div class="upgrade-grid"><div class="field"><label for="targetEffectivenessVisible">Target heat recovery / effectiveness <span>%</span></label><input id="targetEffectivenessVisible" max="99.9" min="0.1" step="0.1" type="number" value="75"/></div><div class="field"><label for="overallUVisible">Overall heat-transfer coefficient U <span>W/(m²·K)</span></label><input id="overallUVisible" min="0.1" step="any" type="number" value="800"/></div></div><div class="button-row"><button class="secondary" id="restoreDairyCaseVisible" type="button">Restore dairy case</button></div></div>
+<div class="button-row"><button id="applyTargetUA" type="button">Apply required UA</button></div>
+</section>
+</section>
+<section class="panel" id="exportPanel">
+<h2>Export results</h2>
+<p class="muted">Download a CSV containing current inputs, calculated outputs, assumptions, and parameter-sweep samples.</p>
+<div class="button-row"><button id="exportCsv" type="button">Download results CSV</button></div>
+<p class="feature-output" id="exportStatus">Exports a flat, machine-learning-ready dataset: one simulation per row, consistent column names and explicit units. Values are model-generated, not measured plant data. No data are uploaded.</p>
+
+</section></main><footer>Thermal Recovery Lab · Educational simulation only · Not a validated industrial design tool</footer>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id), ns="http://www.w3.org/2000/svg";
+const defaults={t_h_in:80,t_c_in:15,m_dot_h:.25,m_dot_c:.25,cp_h:4180,cp_c:4180,ua:3135};
+let result=null,running=false,raf=null,lastTime=null,simTime=0,particles=[],heatMarks=[];
+let sweepRows=[];
+const svg=`<svg viewBox="0 0 1000 390" role="img" aria-label="Counterflow heat exchanger schematic" xmlns="${ns}">
+<defs><linearGradient id="hotG"><stop stop-color="#ff604d" stop-opacity=".25"/><stop offset="1" stop-color="#ff9a52" stop-opacity=".5"/></linearGradient><linearGradient id="coldG"><stop stop-color="#00e5ff" stop-opacity=".3"/><stop offset="1" stop-color="#3b82f6" stop-opacity=".45"/></linearGradient></defs>
+<rect x="150" y="78" width="700" height="234" rx="18" fill="#10243a" stroke="#64809c" stroke-width="4"/><rect x="160" y="90" width="680" height="103" rx="8" fill="url(#hotG)"/><rect x="160" y="197" width="680" height="103" rx="8" fill="url(#coldG)"/>
+<path d="M0 140H150 M850 140H1000" stroke="#ff604d" stroke-width="25" opacity=".8"/><path d="M1000 250H850 M150 250H0" stroke="#38cfff" stroke-width="25" opacity=".8"/>
+<path d="M170 194H830" stroke="#aebfd0" stroke-width="8" stroke-dasharray="15 7"/>
+<g fill="none" stroke="#6c9cbd" stroke-width="8"><path d="M210 112H790"/><path d="M210 137H790"/><path d="M210 162H790"/></g><g fill="none" stroke="#55d8f3" stroke-width="8"><path d="M790 224H210"/><path d="M790 250H210"/><path d="M790 276H210"/></g>
+<g font-family="system-ui,sans-serif" font-size="16" font-weight="700" fill="#eaf3ff"><text x="20" y="96" fill="#ff806f">HOT INLET</text><text x="20" y="116" font-size="13">Hot drain water</text><text x="860" y="96" fill="#ffad83">HOT OUTLET</text><text x="860" y="116" font-size="13">Cooled stream</text><text x="860" y="300" fill="#67eaff">COLD INLET</text><text x="860" y="320" font-size="13">Clean water</text><text x="20" y="300" fill="#67eaff">COLD OUTLET</text><text x="20" y="320" font-size="13">Preheated water</text><text id="diagramMode" x="500" y="53" text-anchor="middle" font-size="19">COUNTERFLOW HEAT EXCHANGER</text><text x="500" y="350" text-anchor="middle" fill="#ffd166" font-size="14">HEAT CROSSES THE WALL · FLUIDS DO NOT MIX</text></g>
+<g fill="white"><path d="M98 129l20 11-20 11z"/><path d="M918 129l20 11-20 11z"/><path d="M82 239l-20 11 20 11z"/><path d="M902 239l-20 11 20 11z"/></g><g id="particleLayer"></g></svg>`;
+
+function calc(){
+ if(!validateOperatingInputs())throw Error("Fill in the highlighted operating parameters above.");
+ const v={};
+ for(const id of Object.keys(defaults)){
+  const e=$(id);
+  if(!e)throw Error("Missing input element: "+id);
+  if(e.value.trim()==="")throw Error("Please fill in every input.");
+  v[id]=Number(e.value);
+  if(!Number.isFinite(v[id]))throw Error("Every input must be a finite number.");
+ }
+ const th=v.t_h_in, tc=v.t_c_in, mh=v.m_dot_h, mc=v.m_dot_c, cph=v.cp_h, cpc=v.cp_c, cleanUa=v.ua;
+ const ua=cleanUa;
+ v.cleanUa=cleanUa;v.ua=ua;
+ if(mh<=0||mc<=0)throw Error("Mass flow rates must be greater than zero.");
+ if(cph<=0||cpc<=0)throw Error("Specific heat capacities must be greater than zero.");
+ if(ua<0)throw Error("UA cannot be negative.");
+ if(th<=tc)throw Error("Hot inlet temperature must be greater than cold inlet temperature.");
+ if(th<=-273.15||tc<=-273.15)throw Error("Temperatures must be above absolute zero.");
+ const Ch=mh*cph,Cc=mc*cpc,Cmin=Math.min(Ch,Cc),Cmax=Math.max(Ch,Cc),Cr=Cmin/Cmax,NTU=ua/Cmin;
+ const arrEl=$("flowArrangement");
+ const arrangement=arrEl ? arrEl.value : "counter";
+ const epsilon=epsilonFor(NTU,Cr,arrangement);
+ const qmax=Cmin*(th-tc),q=epsilon*qmax,tho=th-q/Ch,tco=tc+q/Cc;
+ const qh=Ch*(th-tho),qc=Cc*(tco-tc);
+ return {...v,Ch,Cc,Cmin,Cmax,Cr,NTU,epsilon,qmax,q,tho,tco,residual:qh-qc,arrangement};
+}
+
+function text(id,s){const e=$(id);if(e)e.textContent=s;}
+
+function validateOperatingInputs(){
+ const missing=[];
+ Object.keys(defaults).forEach(id => {
+  const el=$(id);
+  if(!el) return;
+  const field=el.closest('.field');
+  let msg=field ? field.querySelector('.field-error') : null;
+  const val = el.value !== null && el.value !== undefined ? el.value : '';
+  const empty=String(val).trim()==='';
+  
+  if(empty) el.classList.add('input-missing');
+  else el.classList.remove('input-missing');
+  
+  el.setAttribute('aria-invalid',empty?'true':'false');
+  if(empty){
+   const labelObj = field ? field.querySelector('label') : null;
+   const labelTxt = labelObj ? labelObj.innerText.replace(/\s+/g,' ').trim() : id;
+   missing.push({id: id, label: labelTxt, el: el});
+   if(field&&!msg){msg=document.createElement('small');msg.className='field-error';msg.id=id+'-field-error';field.appendChild(msg);}
+   if(msg)msg.textContent='Required — enter a value to run the calculation.';
+   if(msg)el.setAttribute('aria-describedby',msg.id);
+  }else{
+   if(msg)msg.remove();
+   el.removeAttribute('aria-describedby');
+  }
+ });
+ const box=$('errorBox');
+ if(missing.length){
+  if(box){
+      const names = missing.map(x=>x.label).join(', ');
+      box.style.display='block';
+      box.textContent='Please fill in the highlighted operating parameter'+(missing.length>1?'s':'')+': '+names+'.';
+  }
+  return false;
+ }
+ return true;
+}
+
+function chart(r){
+ const c=$("tempChart");
+ if(!c) return;
+ const rect=c.getBoundingClientRect();if(rect.width<20||rect.height<20)return;
+ const dpr=window.devicePixelRatio||1;c.width=Math.round(rect.width*dpr);c.height=Math.round(260*dpr);const ctx=c.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);const w=rect.width,h=260,p={l:48,r:12,t:18,b:40},lo=Math.min(r.tho,r.t_c_in)-5,hi=Math.max(r.t_h_in,r.tco)+5,span=Math.max(1,hi-lo),X=x=>p.l+x*(w-p.l-p.r),Y=t=>h-p.b-(t-lo)/span*(h-p.t-p.b);
+ ctx.clearRect(0,0,w,h);ctx.font="11px system-ui";ctx.lineWidth=1;ctx.strokeStyle="#203a54";ctx.fillStyle="#9db4ce";
+ for(let i=0;i<=4;i++){let t=lo+span*i/4,y=Y(t);ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(w-p.r,y);ctx.stroke();ctx.textAlign="right";ctx.fillText(t.toFixed(0)+"°C",p.l-6,y+4);}
+ ctx.strokeStyle="#7189a4";ctx.beginPath();ctx.moveTo(p.l,p.t);ctx.lineTo(p.l,h-p.b);ctx.lineTo(w-p.r,h-p.b);ctx.stroke();ctx.textAlign="center";ctx.fillText(r.arrangement==="parallel"?"Hot & cold inlet":"Hot inlet end",X(0),h-13);ctx.fillText(r.arrangement==="parallel"?"Hot & cold outlet":"Cold inlet end",X(1),h-13);
+ const profiles=temperatureProfiles(r,120);
+ function line(color,points){ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();points.forEach((pt,i)=>i?ctx.lineTo(X(pt.x),Y(pt.t)):ctx.moveTo(X(pt.x),Y(pt.t)));ctx.stroke();}
+ line("#ff604d",profiles.hot);line("#38cfff",profiles.cold);
+}
+
+function temperatureProfiles(r,n){
+ if(!n) n=120;
+ const steps=Math.max(20,n),Ch=r.Ch||r.m_dot_h*r.cp_h,Cc=r.Cc||r.m_dot_c*r.cp_c,pm=profileModel(r),UA=pm.ua;
+ const integrate=(th0,tc0)=>{
+  let th=th0,tc=tc0;const hot=[{x:0,t:th}],cold=[{x:0,t:tc}],dx=1/steps;
+  const deriv=(a,b)=>({h:-UA/Ch*(a-b),c:(pm.arr==="parallel"?1:-1)*UA/Cc*(a-b)});
+  for(let i=0;i<steps;i++){
+   const k1=deriv(th,tc),k2=deriv(th+k1.h*dx/2,tc+k1.c*dx/2),k3=deriv(th+k2.h*dx/2,tc+k2.c*dx/2),k4=deriv(th+k3.h*dx,tc+k3.c*dx);
+   th+=dx*(k1.h+2*k2.h+2*k3.h+k4.h)/6;tc+=dx*(k1.c+2*k2.c+2*k3.c+k4.c)/6;
+   hot.push({x:(i+1)/steps,t:th});cold.push({x:(i+1)/steps,t:tc});
+  }
+  return {hot,cold,th,tc};
+ };
+ if(pm.arr==="parallel")return integrate(r.t_h_in,r.t_c_in);
+ let lo=r.t_c_in,hi=r.t_h_in,sol=null;
+ for(let i=0;i<70;i++){
+  const mid=(lo+hi)/2,candidate=integrate(r.t_h_in,mid);sol=candidate;
+  if(candidate.tc>r.t_c_in)hi=mid;else lo=mid;
+ }
+ sol=integrate(r.t_h_in,(lo+hi)/2);
+ return {hot:sol.hot,cold:sol.cold};
+}
+
+function update(r){
+ text("outTh",r.tho.toFixed(2)+" °C");text("outTc",r.tco.toFixed(2)+" °C");text("outQ",(r.q/1000).toFixed(3)+" kW");text("outEff",r.epsilon.toFixed(4));text("outNtu",r.NTU.toFixed(4));text("outResidual",r.residual.toExponential(2)+" W");
+ text("tblThIn",r.t_h_in.toFixed(2));text("tblThOut",r.tho.toFixed(2));text("tblMh",r.m_dot_h.toFixed(3));text("tblQh","−"+(r.q/1000).toFixed(3)+" kW");text("tblTcIn",r.t_c_in.toFixed(2));text("tblTcOut",r.tco.toFixed(2));text("tblMc",r.m_dot_c.toFixed(3));text("tblQc","+"+(r.q/1000).toFixed(3)+" kW");
+ const b=$("balanceStatus");if(b){if(Math.abs(r.residual)<1e-7){b.textContent="✓ Energy balance passed: hot-side heat loss matches cold-side heat gain.";b.className="muted pass";}else{b.textContent="Energy-balance residual: "+r.residual.toExponential(3)+" W";b.className="muted";}}
+ chart(r);updateEconomics(r);updateSizing(r);updateCaseStudy(r);drawPerformanceCharts(r);updateFFactor(r);
+}
+
+function updateEconomics(r){
+ const hrEl=$("operatingHours"), dEl=$("operatingDays"), effEl=$("fuelEfficiency"), pEl=$("energyPrice"), tEl=$("thermEnergy"), cEl=$("currencySymbol");
+ const hours=Number(hrEl?hrEl.value:0),days=Number(dEl?dEl.value:0),eff=Number(effEl?effEl.value:0)/100,price=Number(pEl?pEl.value:0),thermKJ=Number(tEl?tEl.value:0),currency=(cEl?cEl.value:'$').trim();
+ const valid=[hours,days,eff,price,thermKJ].every(Number.isFinite)&&hours>=0&&hours<=24&&days>=0&&days<=366&&eff>0&&eff<=1&&price>=0&&thermKJ>0;
+ if(!valid){text("annualHeat","Check inputs");text("annualSavings","Check inputs");text("economicsNote","Enter 0–24 h/day, 0–366 days/year, efficiency above 0 and up to 100%, non-negative fuel price and positive energy per therm.");return;}
+ const annualUsefulKJ=(r.q/1000)*hours*3600*days,avoidedFuelKJ=annualUsefulKJ/eff,annualTherms=avoidedFuelKJ/thermKJ,savings=annualTherms*price;
+ text("annualHeat",(annualUsefulKJ/3600).toLocaleString("en-US",{maximumFractionDigits:0})+" kWh/year");text("annualSavings",currency+""+savings.toLocaleString("en-US",{maximumFractionDigits:2})+" / year");
+ text("economicsNote","Estimated avoided natural gas: "+annualTherms.toLocaleString("en-US",{maximumFractionDigits:1})+" therms/year ("+(avoidedFuelKJ/1000).toLocaleString("en-US",{maximumFractionDigits:0})+" MJ/year of fuel input). Assumes recovered heat displaces furnace fuel at the selected efficiency. Gross fuel saving only; pumping, maintenance and installation costs must be evaluated separately before final selection.");
+}
+
+function recalc(){const box=$("errorBox");try{result=calc();if(box){box.style.display="none";box.textContent="";}update(result);return true;}catch(e){if(!validateOperatingInputs()){return false;}if(box){box.textContent=e.message||String(e);box.style.display="block";}return false;}}
+function svgEl(tag,attrs){const e=document.createElementNS(ns,tag);Object.keys(attrs).forEach(k=>e.setAttribute(k,attrs[k]));return e;}
+function initParticles(){const layer=$("particleLayer");if(!layer)return;while(layer.firstChild){layer.removeChild(layer.firstChild);}particles=[];heatMarks=[];
+ for(let i=0;i<24;i++){const h=svgEl("circle",{r:4.5,fill:i%3===0?"#ffc0a8":"#ff604d"}),c=svgEl("circle",{r:4.5,fill:i%3===0?"#d4fbff":"#38cfff"});layer.appendChild(h);layer.appendChild(c);particles.push({el:h,type:"hot",p:i/24,y:112+(i%3)*25},{el:c,type:"cold",p:i/24,y:224+(i%3)*26});}
+ for(let i=0;i<10;i++){const e=svgEl("path",{d:"M-4 -5L4 0L-4 5Z",fill:"#ffd166"});layer.appendChild(e);heatMarks.push({el:e,x:210+i*64,p:(i*.13)%1});}renderParticles();}
+function renderParticles(){particles.forEach(p=>{p.el.setAttribute("cx",150+p.p*700);p.el.setAttribute("cy",p.y);});heatMarks.forEach(a=>{a.el.setAttribute("transform","translate("+a.x+" "+(171+a.p*25)+") rotate(90)");a.el.setAttribute("opacity",0.9-a.p*0.4);});}
+function frame(ts){if(!running){raf=null;return;}if(lastTime===null)lastTime=ts;const dt=Math.min(0.05,Math.max(0,(ts-lastTime)/1000));lastTime=ts;const spEl=$("animSpeed");const speed=Number(spEl?spEl.value:1)||1;simTime+=dt*speed;text("simTime",simTime.toFixed(1)+" s");
+ particles.forEach(p=>p.p=(p.p+(p.type==="hot"?1:-1)*dt*speed*0.18+1)%1);heatMarks.forEach(a=>a.p=(a.p+dt*speed*0.45)%1);renderParticles();raf=requestAnimationFrame(frame);}
+function start(){if(running){pause();return;}running=true;lastTime=null;const d=$("statusDot");if(d)d.classList.add("on");text("statusText","SIMULATION RUNNING");text("btnStart","■ Stop simulation");const b=$("btnStart");if(b)b.setAttribute("aria-pressed","true");raf=requestAnimationFrame(frame);}
+function pause(){running=false;if(raf!==null)cancelAnimationFrame(raf);raf=null;lastTime=null;const d=$("statusDot");if(d)d.classList.remove("on");text("statusText",simTime>0?"SIMULATION PAUSED":"SYSTEM READY");text("btnStart",simTime>0?"▶ Resume simulation":"▶ Start simulation");const b=$("btnStart");if(b)b.setAttribute("aria-pressed","false");}
+function reset(){pause();simTime=0;text("simTime","0.0 s");text("statusText","SYSTEM READY");text("btnStart","▶ Start simulation");const b=$("btnStart");if(b)b.setAttribute("aria-pressed","false");initParticles();}
+
+function readBaseInputs(){
+ const v={};
+ for(const id of Object.keys(defaults)){
+  const e=$(id); if(!e) throw Error("Missing input element: "+id);
+  const val = e.value !== null && e.value !== undefined ? e.value : '';
+  if(String(val).trim()===""){
+      validateOperatingInputs();
+      const missing=Object.keys(defaults).filter(k=>{const el=$(k);const vl=el&&el.value!==null&&el.value!==undefined?el.value:'';return String(vl).trim()==='';}).map(k=>{const el=$(k);const f=el?el.closest(".field"):null;const l=f?f.querySelector("label"):null;return l?l.innerText.replace(/\s+/g," ").trim():k;});
+      throw Error("Fill in the highlighted operating parameters: "+missing.join(", ")+".");
+  }
+  v[id]=Number(e.value);
+  if(!Number.isFinite(v[id])) throw Error("Operating inputs must be finite numbers before running a sweep.");
+ }
+ return v;
+}
+function solveValues(v){
+ const th=v.t_h_in,tc=v.t_c_in,mh=v.m_dot_h,mc=v.m_dot_c,cph=v.cp_h,cpc=v.cp_c,ua=v.ua;
+ if(mh<=0||mc<=0)throw Error("Mass flow rates must be greater than zero.");
+ if(cph<=0||cpc<=0)throw Error("Specific heat capacities must be greater than zero.");
+ if(ua<0)throw Error("UA cannot be negative.");
+ if(th<=tc)throw Error("Every sweep point must keep hot inlet temperature above cold inlet temperature.");
+ if(th<=-273.15||tc<=-273.15)throw Error("Temperatures must be above absolute zero.");
+ const Ch=mh*cph,Cc=mc*cpc,Cmin=Math.min(Ch,Cc),Cmax=Math.max(Ch,Cc),Cr=Cmin/Cmax,NTU=ua/Cmin;
+ const arrEl=$("flowArrangement");
+ const arrangement=arrEl?arrEl.value:"counter";
+ const epsilon=epsilonFor(NTU,Cr,arrangement);
+ const qmax=Cmin*(th-tc),q=epsilon*qmax,tho=th-q/Ch,tco=tc+q/Cc;
+ return {...v,q:q,tho:tho,tco:tco,epsilon:epsilon,NTU:NTU,qmax:qmax,Ch:Ch,Cc:Cc,Cmin:Cmin,Cmax:Cmax,Cr:Cr,arrangement:arrangement};
+}
+
+const sweepMeta={
+ ua:{label:"UA (W/K)",min:0,max:10000,step:100},
+ m_dot_h:{label:"Hot mass flow (kg/s)",min:0.01,max:1,step:0.01},
+ m_dot_c:{label:"Cold mass flow (kg/s)",min:0.01,max:1,step:0.01},
+ t_h_in:{label:"Hot inlet temperature (°C)",min:20,max:120,step:1}
+};
+
+function applySweepDefaults(){
+ const pEl=$("sweepParameter");
+ const p=pEl?pEl.value:"ua";
+ const meta=sweepMeta[p];
+ if(!meta) return;
+ const sm=$("sweepMin"),sx=$("sweepMax"),sp=$("sweepPoints");
+ if(sm)sm.value=String(p==="ua"?500:meta.min);
+ if(sx)sx.value=String(p==="ua"?6000:meta.max);
+ if(sp)sp.value="25";
+}
+
+function runParameterSweep(){
+ const error=$("sweepError");if(error){error.style.display="none";error.textContent="";}
+ try{
+  const base=readBaseInputs();
+  const paramEl=$("sweepParameter");
+  const param=paramEl?paramEl.value:"ua";
+  const sm=$("sweepMin"),sx=$("sweepMax"),sp=$("sweepPoints");
+  const min=Number(sm?sm.value:0),max=Number(sx?sx.value:0),n=Number(sp?sp.value:0);
+  if(!Number.isFinite(min)||!Number.isFinite(max)||min>=max)throw Error("Sweep minimum and maximum must be finite, and minimum must be smaller than maximum.");
+  if(!Number.isInteger(n)||n<3||n>101)throw Error("Choose between 3 and 101 sweep points.");
+  if(param==="ua"&&min<0)throw Error("UA cannot be negative.");
+  if((param==="m_dot_h"||param==="m_dot_c")&&min<=0)throw Error("Mass flow sweep minimum must be greater than zero.");
+  if(param==="t_h_in"&&min<=base.t_c_in)throw Error("Hot inlet sweep minimum must remain above the current cold inlet temperature ("+base.t_c_in+" °C).");
+  const rows=[];
+  for(let i=0;i<n;i++){
+   const x=min+(max-min)*i/(n-1),v={...base};
+   v[param]=x;
+   const sol=solveValues(v);
+   rows.push({x:x,...sol});
+  }
+  sweepRows=rows;drawSweepChart(rows,param);
+  const samples=[rows[0],rows[Math.floor((rows.length-1)/2)],rows[rows.length-1]];
+  const tb=$("sweepTableBody");
+  if(tb){
+      tb.innerHTML="";
+      samples.forEach(r=>{
+       const tr=document.createElement("tr");
+       const values=[formatSweepX(r.x,param),(r.q/1000).toFixed(3),r.tho.toFixed(2),r.tco.toFixed(2),r.epsilon.toFixed(4)];
+       values.forEach(value=>{const td=document.createElement("td");td.textContent=value;tr.appendChild(td);});
+       tb.appendChild(tr);
+      });
+  }
+  const qs=rows.map(r=>r.q/1000);
+  const minQ=Math.min.apply(null,qs),maxQ=Math.max.apply(null,qs);
+  text("sweepSummary","Calculated "+rows.length+" points. Heat duty ranges from "+minQ.toFixed(3)+" to "+maxQ.toFixed(3)+" kW. Other inputs held constant at their current calculator values. Table shows minimum, midpoint and maximum sweep points.");
+ }catch(e){if(error){error.textContent=e.message||String(e);error.style.display="block";}}
+}
+
+function formatSweepX(x,param){
+ if(param==="ua")return x.toFixed(1)+" W/K";
+ if(param==="m_dot_h"||param==="m_dot_c")return x.toFixed(4)+" kg/s";
+ return x.toFixed(2)+" °C";
+}
+
+function drawSweepChart(rows,param){
+ const canvas=$("sweepChart");if(!canvas)return;
+ const rect=canvas.getBoundingClientRect();if(rect.width<20)return;
+ const dpr=window.devicePixelRatio||1,h=260;canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(h*dpr);
+ const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+ const w=rect.width,p={l:58,r:18,t:20,b:48},ys=rows.map(r=>r.q/1000);
+ let yMin=Math.min.apply(null,ys),yMax=Math.max.apply(null,ys);if(yMax-yMin<1)yMax=yMin+1;
+ const yPad=(yMax-yMin)*0.08;yMin=Math.max(0,yMin-yPad);yMax+=yPad;
+ const xMin=rows[0].x,xMax=rows[rows.length-1].x;
+ const X=x=>p.l+(x-xMin)/(xMax-xMin)*(w-p.l-p.r),Y=y=>h-p.b-(y-yMin)/(yMax-yMin)*(h-p.t-p.b);
+ ctx.clearRect(0,0,w,h);ctx.font="11px system-ui";ctx.lineWidth=1;ctx.strokeStyle="#203a54";ctx.fillStyle="#9db4ce";
+ for(let i=0;i<=4;i++){const y=yMin+(yMax-yMin)*i/4,py=Y(y);ctx.beginPath();ctx.moveTo(p.l,py);ctx.lineTo(w-p.r,py);ctx.stroke();ctx.textAlign="right";ctx.fillText(y.toFixed(1),p.l-7,py+4);}
+ ctx.strokeStyle="#7189a4";ctx.beginPath();ctx.moveTo(p.l,p.t);ctx.lineTo(p.l,h-p.b);ctx.lineTo(w-p.r,h-p.b);ctx.stroke();
+ ctx.strokeStyle="#00e5ff";ctx.lineWidth=3;ctx.beginPath();rows.forEach((r,i)=>{if(i===0)ctx.moveTo(X(r.x),Y(r.q/1000));else ctx.lineTo(X(r.x),Y(r.q/1000));});ctx.stroke();
+ ctx.fillStyle="#00e5ff";rows.forEach(r=>{ctx.beginPath();ctx.arc(X(r.x),Y(r.q/1000),2.3,0,Math.PI*2);ctx.fill();});
+ const m=sweepMeta[param];
+ ctx.fillStyle="#9db4ce";ctx.textAlign="center";ctx.fillText(m?m.label:param,w/2,h-8);
+ ctx.save();ctx.translate(14,h/2);ctx.rotate(-Math.PI/2);ctx.fillText("Heat duty (kW)",0,0);ctx.restore();
+ ctx.textAlign="left";ctx.fillText(xMin.toPrecision(4),p.l,h-p.b+17);ctx.textAlign="right";ctx.fillText(xMax.toPrecision(4),w-p.r,h-p.b+17);
+}
+
+function requiredUaForTarget(r,target){
+ const targetE=target/100;
+ if(!(targetE>0&&targetE<1))throw Error("Target effectiveness must be greater than 0% and less than 100%.");
+ const maxE=epsilonFor(1e7,r.Cr,r.arrangement);
+ if(targetE>=maxE-1e-8)throw Error("Target recovery is at or above the model's attainable limit for this flow arrangement.");
+ let lo=0,hi=1;
+ while(epsilonFor(hi,r.Cr,r.arrangement)<targetE&&hi<1e7)hi*=2;
+ if(hi>=1e7&&epsilonFor(hi,r.Cr,r.arrangement)<targetE)throw Error("Could not bracket the required UA for this target.");
+ for(let i=0;i<100;i++){const mid=(lo+hi)/2;if(epsilonFor(mid,r.Cr,r.arrangement)<targetE)lo=mid;else hi=mid;}
+ return (lo+hi)/2*r.Cmin;
+}
+
+function calcLmtd(r){
+ let d1,d2;
+ if(r.arrangement==="parallel"){d1=r.t_h_in-r.t_c_in;d2=r.tho-r.tco;}
+ else{d1=r.t_h_in-r.tco;d2=r.tho-r.t_c_in;}
+ if(d1<=0||d2<=0)return {value:null,d1:d1,d2:d2};
+ if(Math.abs(d1-d2)<1e-8)return {value:d1,d1:d1,d2:d2};
+ return {value:(d1-d2)/Math.log(d1/d2),d1:d1,d2:d2};
+}
+
+function updateCaseStudy(r){
+ const teEl=$("targetEffectivenessVisible");
+ const targetPct=Number(teEl?teEl.value:75),target=targetPct/100;
+ const available=r.m_dot_h*r.cp_h*(r.t_h_in-r.t_c_in);
+ const targetQ=available*target;
+ if(!Number.isFinite(targetPct)||targetPct<=0||targetPct>=100){text("caseAvailableHeat",(available/1000).toFixed(3)+" kW");text("caseTargetDuty","Check target");text("caseAnnualSavings","Check target");return;}
+ const hEl=$("operatingHours"),dEl=$("operatingDays"),fEl=$("fuelEfficiency"),pEl=$("energyPrice"),thEl=$("thermEnergy");
+ const hours=Number(hEl?hEl.value:0),days=Number(dEl?dEl.value:0),eff=Number(fEl?fEl.value:0)/100,price=Number(pEl?pEl.value:0),therm=Number(thEl?thEl.value:0);
+ text("caseAvailableHeat",(available/1000).toFixed(3)+" kW");
+ text("caseTargetDuty",(targetQ/1000).toFixed(3)+" kW");
+ if([hours,days,eff,price,therm].every(Number.isFinite)&&hours>=0&&hours<=24&&days>=0&&days<=366&&eff>0&&eff<=1&&price>=0&&therm>0){
+  const annualKJ=targetQ/1000*hours*3600*days,saving=annualKJ/eff/therm*price;
+  const cEl=$("currencySymbol");
+  text("caseAnnualSavings",(cEl?cEl.value||"$":"$")+saving.toLocaleString("en-US",{maximumFractionDigits:2})+"/year");
+ }else{
+  text("caseAnnualSavings","Check economics inputs");
+ }
+ const feasible=targetQ<=r.qmax+1e-6;
+ const crEl=$("caseStudyResult");
+ const old=crEl?crEl.querySelector(".muted:last-child"):null;
+ if(old)old.textContent="Target duty is "+(feasible?"within":"above")+" the current model maximum qmax of "+(r.qmax/1000).toFixed(3)+" kW. This assignment-style target is a fraction of hot-side sensible heat; the solver's effectiveness target and UA sizing are defined against Cmin. When heat-capacity rates differ, those targets are not interchangeable. "+((TYPES[r.arrangement]?TYPES[r.arrangement].label:r.arrangement)||"Selected")+" arrangement is selected in the main model.";
+}
+
+function updateSizing(r){
+ try{
+  const teEl=$("targetEffectivenessVisible"), uEl=$("overallUVisible");
+  const target=Number(teEl?teEl.value:75),u=Number(uEl?uEl.value:800);
+  if(!Number.isFinite(target)||target<=0||target>=100||!Number.isFinite(u)||u<=0)throw Error("Enter target effectiveness between 0 and 100% and a positive U.");
+  const req=requiredUaForTarget(r,target),lm=calcLmtd(r);
+  text("requiredUA",req.toFixed(1)+" W/K");text("requiredArea",(req/u).toFixed(3)+" m²");
+  text("lmtdValue",lm.value===null?"Not feasible":lm.value.toFixed(2)+" K");text("sizingDuty",(r.q/1000).toFixed(3)+" kW");
+  text("sizingNote",lm.value===null?"Current operating point has a non-positive terminal temperature difference; check the flow arrangement and inputs. Required UA is a model target, not a vendor sizing.":"Required UA is for "+target.toFixed(1)+"% effectiveness. Estimated area uses U = "+u.toFixed(1)+" W/(m²·K). Current LMTD is based on the present calculated outlet temperatures.");
+ }catch(e){text("requiredUA","Check inputs");text("requiredArea","—");text("lmtdValue","—");text("sizingDuty",(r.q?r.q/1000:0).toFixed(3)+" kW");text("sizingNote",e.message||String(e));}
+}
+
+function modelForInputs(v){
+ const Ch=v.m_dot_h*v.cp_h,Cc=v.m_dot_c*v.cp_c,Cmin=Math.min(Ch,Cc),Cmax=Math.max(Ch,Cc),Cr=Cmin/Cmax,NTU=v.ua/Cmin;
+ const aEl=$("flowArrangement");
+ const arrangement=aEl?aEl.value:"counter";
+ const eps=epsilonFor(NTU,Cr,arrangement),q=eps*Cmin*(v.t_h_in-v.t_c_in);
+ return {...v,Ch:Ch,Cc:Cc,Cmin:Cmin,Cmax:Cmax,Cr:Cr,NTU:NTU,epsilon:eps,q:q,qmax:Cmin*(v.t_h_in-v.t_c_in),tho:v.t_h_in-q/Ch,tco:v.t_c_in+q/Cc,arrangement:arrangement};
+}
+
+function drawSmallChart(id,series,xLabel,yLabel){
+ const c=$(id);if(!c)return;
+ const rect=c.getBoundingClientRect();if(rect.width<20)return;
+ const dpr=window.devicePixelRatio||1,h=220;c.width=Math.round(rect.width*dpr);c.height=Math.round(h*dpr);
+ const ctx=c.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);const w=rect.width,p={l:48,r:12,t:14,b:38};
+ let all=[];
+ series.forEach(a=>{a.points.forEach(pt=>{if(Number.isFinite(pt.y))all.push(pt.y);});});
+ if(!all.length){ctx.clearRect(0,0,w,h);ctx.fillStyle="#9db4ce";ctx.textAlign="center";ctx.fillText("No recorded data yet",w/2,h/2);return;}
+ let ymin=Math.min.apply(null,all),ymax=Math.max.apply(null,all);if(ymax-ymin<1e-9)ymax=ymin+1;const pad=(ymax-ymin)*0.08;ymin-=pad;ymax+=pad;
+ let xall=[];
+ series.forEach(a=>{a.points.forEach(pt=>{xall.push(pt.x);});});
+ const xmin=Math.min.apply(null,xall),xmax=Math.max.apply(null,xall);
+ const X=x=>p.l+(x-xmin)/(xmax-xmin||1)*(w-p.l-p.r),Y=y=>h-p.b-(y-ymin)/(ymax-ymin)*(h-p.t-p.b);
+ ctx.clearRect(0,0,w,h);ctx.font="10px system-ui";ctx.fillStyle="#9db4ce";ctx.strokeStyle="#203a54";
+ for(let i=0;i<=4;i++){const y=ymin+(ymax-ymin)*i/4,py=Y(y);ctx.beginPath();ctx.moveTo(p.l,py);ctx.lineTo(w-p.r,py);ctx.stroke();ctx.textAlign="right";ctx.fillText(y.toPrecision(3),p.l-5,py+3);}
+ ctx.strokeStyle="#7189a4";ctx.beginPath();ctx.moveTo(p.l,p.t);ctx.lineTo(p.l,h-p.b);ctx.lineTo(w-p.r,h-p.b);ctx.stroke();
+ const colors=["#00e5ff","#ff604d","#75e6a0","#ffd166"];
+ series.forEach((ser,idx)=>{ctx.strokeStyle=colors[idx%colors.length];ctx.lineWidth=2;ctx.beginPath();ser.points.forEach((pt,i)=>{if(i===0)ctx.moveTo(X(pt.x),Y(pt.y));else ctx.lineTo(X(pt.x),Y(pt.y));});ctx.stroke();});
+ ctx.fillStyle="#9db4ce";ctx.textAlign="center";ctx.fillText(xLabel,w/2,h-8);ctx.save();ctx.translate(12,h/2);ctx.rotate(-Math.PI/2);ctx.fillText(yLabel,0,0);ctx.restore();
+}
+
+function drawPerformanceCharts(r){
+ const pts=[];for(let i=0;i<=40;i++){const n=0.01+i*0.25;pts.push({x:n,y:epsilonFor(n,r.Cr,r.arrangement)});}
+ drawSmallChart("ntuChart",[{points:pts}],"NTU","Effectiveness");
+ const flow=[];const base=readBaseInputs();for(let i=0;i<=30;i++){const m=Math.max(0.001,0.01+i*0.02);try{const v={...base};v.m_dot_h=m;const uaEl=$("ua");v.ua=Number(uaEl?uaEl.value:0);flow.push({x:m,y:modelForInputs(v).q/1000});}catch(e){}}
+ drawSmallChart("flowChart",[{points:flow}],"Hot mass flow (kg/s)","Heat duty (kW)");
+ const savings=[];
+ const hrEl=$("operatingHours"),dEl=$("operatingDays"),fEl=$("fuelEfficiency"),pEl=$("energyPrice"),thEl=$("thermEnergy");
+ const hours=Number(hrEl?hrEl.value:0),days=Number(dEl?dEl.value:0),eff=Number(fEl?fEl.value:0)/100,price=Number(pEl?pEl.value:0),therm=Number(thEl?thEl.value:0);
+ if([hours,days,eff,price,therm].every(Number.isFinite)&&eff>0&&therm>0){for(let pct=0;pct<=95;pct+=5){const q=pct/100*r.qmax,annualKJ=q/1000*hours*3600*days,save=annualKJ/eff/therm*price;savings.push({x:pct,y:save});}}
+ drawSmallChart("savingsChart",[{points:savings}],"Effectiveness target (%)","Gross savings (currency/year)");
+}
+
+function csvDownload(filename,rows){
+ const csv=rows.map(row=>row.map(v=>'"'+String(v!==null&&v!==undefined?v:"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+ const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+
+function exportResults(){
+ if(!result&&!recalc())return;
+ const base=readBaseInputs(), r=result;
+ const columns=[
+  'sample_id','sample_source','sweep_parameter','sweep_value',
+  'flow_arrangement','hot_inlet_temp_C','cold_inlet_temp_C',
+  'hot_mass_flow_kg_s','cold_mass_flow_kg_s','hot_specific_heat_J_kgK','cold_specific_heat_J_kgK',
+  'ua_W_K','furnace_efficiency_fraction','operating_hours_per_day','operating_days_per_year',
+  'natural_gas_price_per_therm','energy_per_therm_kJ','overall_U_W_m2K',
+  'heat_duty_kW','hot_outlet_temp_C','cold_outlet_temp_C','effectiveness_fraction','ntu',
+  'max_possible_heat_kW','energy_balance_residual_W','annual_useful_heat_kWh',
+  'annual_fuel_savings_currency_per_year','exchanger_configuration','model_assumption_note'
+ ];
+ const num=id=>{const e=$(id);if(!e)return '';const v=Number(e.value);return Number.isFinite(v)?v:'';};
+ const economics={hours:num('operatingHours'),days:num('operatingDays'),eff:num('fuelEfficiency')/100,price:num('energyPrice'),therm:num('thermEnergy')};
+ const curEl=$('currencySymbol');
+ const currency=(curEl?curEl.value:'$').trim();
+ const config=(TYPES[r.arrangement]||{}).label||r.arrangement;
+ const assumption='Model prediction; constant specific heats; no measured plant data. Check actual cold-side flow, UA/U, pressure drop, materials, fouling and vendor sizing before design.';
+ function sample(id,source,v,sol,param,sweepValue){
+  const annualUsefulKWh=(sol.q/1000)*economics.hours*economics.days;
+  const annualSavings=(economics.eff>0&&economics.therm>0)?(sol.q/1000*economics.hours*3600*economics.days/ economics.eff / economics.therm)*economics.price:'';
+  return [id,source,param,sweepValue,sol.arrangement,v.t_h_in,v.t_c_in,v.m_dot_h,v.m_dot_c,v.cp_h,v.cp_c,v.ua,
+   economics.eff,economics.hours,economics.days,economics.price,economics.therm,num('overallUVisible'),
+   sol.q/1000,sol.tho,sol.tco,sol.epsilon,sol.NTU,sol.qmax/1000,sol.residual,
+   annualUsefulKWh,annualSavings,config,assumption];
+ }
+ const rows=[columns];
+ rows.push(sample('sample_0001','current_operating_point',base,r,'',''));
+ const spEl=$('sweepParameter');
+ const param=spEl?spEl.value:'';
+ sweepRows.forEach((sr,i)=>{
+  const v={...base};v[param]=sr.x;
+  rows.push(sample('sweep_'+String(i+1).padStart(4,'0'),'parameter_sweep',v,sr,param,sr.x));
+ });
+ csvDownload('thermal_recovery_ml_dataset.csv',rows);
+ text('exportStatus','ML dataset exported: one simulation per row, consistent columns, numeric inputs/targets, sweep samples and valid optimizer candidates. These are model-generated samples, not measured experimental data.');
+}
+
+function restoreDairyCase(){
+ Object.keys(defaults).forEach(id=>{const el=$(id);if(el)el.value=String(defaults[id]);});
+ const s=(id,val)=>{const el=$(id);if(el)el.value=val;};
+ s("t_h_in","80");s("t_c_in","15");s("m_dot_h",String(15/60));s("m_dot_c",String(15/60));
+ s("cp_h","4180");s("cp_c","4180");s("flowArrangement","counter");
+ s("targetEffectivenessVisible","75");s("overallUVisible","800");
+ s("operatingHours","24");s("operatingDays","365");s("fuelEfficiency","80");s("energyPrice","0.40");s("thermEnergy","105500");s("currencySymbol","$");
+ try{const req=requiredUaForTarget(modelForInputs(readBaseInputs()),75);s("ua",req.toString());}catch(e){s("ua","3135");}
+ if(recalc()){runParameterSweep();drawPerformanceCharts(result);}
+}
+
+/* ================= PHASE 2: exchanger types, hydraulics, economics ================= */
+const TYPES={
+ counter:{label:"Counterflow (double-pipe or plate)",use:"Highest effectiveness for a given UA, so the best thermal choice. Gasketed plate-and-frame units are naturally counterflow and can be opened for cleaning."},
+ parallel:{label:"Parallel flow (double-pipe)",use:"Lowest effectiveness for a given UA (cannot exceed 1/(1+Cr)). Used for simple hardware or when a uniform wall temperature is wanted."},
+ shell1:{label:"Shell-and-tube, 1 shell / 2+ tube passes",use:"Robust, tolerant of pressure and solids, and the tube side can be cleaned. Needs more UA than pure counterflow because of the F-factor penalty."},
+ shell2:{label:"Shell-and-tube, 2 shells / 4+ tube passes",use:"Two shells in series approach counterflow performance when a temperature cross would otherwise occur. Larger and more costly."},
+ crossBoth:{label:"Cross-flow, both fluids unmixed",use:"Typical of finned-tube coils and plate-fin cores. Compact, mostly used with gases. Uses the common empirical effectiveness relation."},
+ crossCmaxMixed:{label:"Cross-flow, Cmax fluid mixed (Cmin unmixed)",use:"One stream flows in an unbaffled duct (mixed) and the other in separate tubes."},
+ crossCminMixed:{label:"Cross-flow, Cmin fluid mixed (Cmax unmixed)",use:"As above, with the minimum-capacity stream mixed."}
+};
+
+/* ---------- effectiveness relations (Incropera Table 11.3 / Cengel Table 11-4) ---------- */
+function epsShell1(ntu,cr){const s=Math.sqrt(1+cr*cr);return 2/(1+cr+s/Math.tanh(ntu*s/2));}
+function epsilonFor(ntu,cr,type){
+ if(!(ntu>0))return 0;
+ switch(type){
+  case "parallel":return (1-Math.exp(-ntu*(1+cr)))/(1+cr);
+  case "shell1":return epsShell1(ntu,cr);
+  case "shell2":{ 
+   const e1=epsShell1(ntu/2,cr);
+   if(Math.abs(cr-1)<1e-9)return 2*e1/(1+e1);
+   const F=Math.pow((1-e1*cr)/(1-e1),2);
+   if(!Number.isFinite(F))return 1;
+   return (F-1)/(F-cr);
+  }
+  case "crossBoth":return -Math.expm1(Math.pow(ntu,0.22)/cr*Math.expm1(-cr*Math.pow(ntu,0.78))); 
+  case "crossCmaxMixed":return -Math.expm1(cr*Math.expm1(-ntu))/cr;
+  case "crossCminMixed":return -Math.expm1(Math.expm1(-cr*ntu)/cr);
+  default:{ 
+   if(Math.abs(cr-1)<1e-8)return ntu/(1+ntu);
+   const e=Math.exp(-ntu*(1-cr));return (1-e)/(1-cr*e);
+  }
+ }
+}
+function maxEps(type,cr){return epsilonFor(1e6,cr,type);}
+function ntuForEps(type,cr,eps){
+ if(!(eps>0&&eps<1))throw Error("Effectiveness must be between 0 and 100%.");
+ if(eps>=maxEps(type,cr)-1e-9)throw Error("Effectiveness "+(eps*100).toFixed(1)+"% is not attainable with this exchanger type at Cr = "+cr.toFixed(3)+".");
+ let lo=0,hi=1;while(epsilonFor(hi,cr,type)<eps&&hi<1e6)hi*=2;
+ for(let i=0;i<80;i++){const m=(lo+hi)/2;if(epsilonFor(m,cr,type)<eps)lo=m;else hi=m;}
+ return (lo+hi)/2;
+}
+function counterNtuForEps(eps,cr){
+ if(!(eps>0))return 0;
+ if(Math.abs(cr-1)<1e-9)return eps/(1-eps);
+ return Math.log((1-eps*cr)/(1-eps))/(1-cr);
+}
+function profileModel(r){
+ if(r.arrangement==="counter"||r.arrangement==="parallel")return {arr:r.arrangement,ua:r.ua,equivalent:false};
+ const eps=Number.isFinite(r.epsilon)?r.epsilon:epsilonFor(r.NTU,r.Cr,r.arrangement);
+ return {arr:"counter",ua:counterNtuForEps(eps,r.Cr)*r.Cmin,equivalent:true};
+}
+
+function bowmanF(P,R){
+ if(!(P>0&&P<1))return null;
+ if(Math.abs(R-1)<1e-9){const num=Math.SQRT2*P/(1-P),den=Math.log((2-P*(2-Math.SQRT2))/(2-P*(2+Math.SQRT2)));return num/den;}
+ const s=Math.sqrt(R*R+1);
+ return ((s/(R-1))*Math.log((1-P)/(1-R*P)))/Math.log((2-P*(R+1-s))/(2-P*(R+1+s)));
+}
+function fDerived(r){
+ const lm=calcLmtd(r);
+ if(lm.value===null||!(r.ua>0)||!(r.q>0))return null;
+ return r.q/(r.ua*lm.value);
+}
+function updateFFactor(r){
+ const F=fDerived(r);
+ if(F===null){text("fFactor","—");return;}
+ let s=F.toFixed(4);
+ if(r.arrangement==="shell1"){
+  const P=(r.tco-r.t_c_in)/(r.t_h_in-r.t_c_in),R=(r.t_h_in-r.tho)/(r.tco-r.t_c_in),Fb=bowmanF(P,R);
+  if(Fb!==null&&Number.isFinite(Fb))s+=" (Bowman: "+Fb.toFixed(4)+")";
+ }
+ text("fFactor",s);
+}
+
+function init(){
+ const wr=$("svgWrapper");if(wr)wr.innerHTML=svg;
+ const pf=$("parameterForm");if(pf)pf.addEventListener("submit",e=>{e.preventDefault();if(recalc()){runParameterSweep();drawPerformanceCharts(result);}});
+ const refreshAll=()=>{
+  if(!recalc()) return;
+  try{runParameterSweep();}catch(e){console.warn("Sweep refresh:",e);}
+  try{drawPerformanceCharts(result);}catch(e){console.warn("Chart refresh:",e);}
+  try{if(typeof updateSizing==="function")updateSizing(result);}catch(e){console.warn("Sizing refresh:",e);}
+  try{if(typeof updateEconomics==="function")updateEconomics(result);}catch(e){console.warn("Economics refresh:",e);}
+ };
+ const allReactiveIds=["t_h_in","t_c_in","m_dot_h","m_dot_c","cp_h","cp_c","ua","flowArrangement","targetEffectivenessVisible","overallUVisible","operatingHours","operatingDays","fuelEfficiency","energyPrice","thermEnergy","currencySymbol"];
+ 
+ const resVis=$("restoreDairyCaseVisible");if(resVis)resVis.addEventListener("click",()=>{restoreDairyCase();});
+ const tev=$("targetEffectivenessVisible");
+ if(tev){
+     tev.addEventListener("input",()=>{const te=$("targetEffectiveness");if(te)te.value=tev.value;refreshAll();});
+     tev.addEventListener("change",()=>{const te=$("targetEffectiveness");if(te)te.value=tev.value;refreshAll();});
+ }
+ const ouv=$("overallUVisible");
+ if(ouv){
+     ouv.addEventListener("input",()=>{const ou=$("overallU");if(ou)ou.value=ouv.value;refreshAll();});
+     ouv.addEventListener("change",()=>{const ou=$("overallU");if(ou)ou.value=ouv.value;refreshAll();});
+ }
+ 
+ const uniqueIds=[];
+ allReactiveIds.forEach(id=>{if(uniqueIds.indexOf(id)===-1)uniqueIds.push(id);});
+ uniqueIds.forEach(id=>{const el=$(id);if(!el)return;const handler=()=>{validateOperatingInputs();if(el.value!==undefined&&String(el.value).trim()==="")return;refreshAll();};el.addEventListener("input",handler);el.addEventListener("change",handler);});
+ 
+ const bs=$("btnStart");if(bs)bs.addEventListener("click",start);
+ const bd=$("btnDefaults");
+ if(bd)bd.addEventListener("click",()=>{
+     Object.keys(defaults).forEach(id=>{const el=$(id);if(el)el.value=String(defaults[id]);});
+     const a=$("flowArrangement");if(a)a.value="counter";
+     const tv=$("targetEffectivenessVisible"),te=$("targetEffectiveness");if(tv&&te)tv.value=te.value;
+     const ov=$("overallUVisible"),ou=$("overallU");if(ov&&ou)ov.value=ou.value;
+     refreshAll();
+ });
+ const as=$("animSpeed");if(as)as.addEventListener("input",()=>text("speedVal",Number(as.value).toFixed(1)+"×"));
+ const rs=$("runSweep");if(rs)rs.addEventListener("click",runParameterSweep);
+ const rsw=$("resetSweep");if(rsw)rsw.addEventListener("click",()=>{ const sp=$("sweepParameter");if(sp)sp.value="ua";applySweepDefaults();runParameterSweep(); });
+ const sp=$("sweepParameter");if(sp)sp.addEventListener("change",applySweepDefaults);
+ const atua=$("applyTargetUA");
+ if(atua)atua.addEventListener("click",()=>{try{if(!result&&!recalc())return;const tv=$("targetEffectivenessVisible");if(!tv)return;const ua=requiredUaForTarget(result,Number(tv.value));const uEl=$("ua");if(uEl)uEl.value=ua.toFixed(3);recalc();}catch(e){text("sizingNote",e.message||String(e));}});
+ const ex=$("exportCsv");if(ex)ex.addEventListener("click",exportResults);
+ 
+ window.addEventListener("resize",()=>{if(result){chart(result);}const stb=$("sweepTableBody");if(stb&&stb.children.length>0&&stb.textContent!=="Run a sweep to see results.")runParameterSweep();});
+ initParticles();recalc();applySweepDefaults();runParameterSweep();
+}
+window.addEventListener("DOMContentLoaded",()=>{try{init();}catch(e){console.error("DairyHeat Lab initialization error:",e);const box=$("errorBox");if(box){box.textContent="Initialization failed: "+e.message;box.style.display="block";}const app=$("trl-app");if(app){const notice=document.createElement("div");notice.setAttribute("role","alert");notice.style.cssText="margin:16px;padding:12px;border:1px solid #e05252;border-radius:8px;color:#ffd7da;background:#431f2a";notice.textContent="The simulator could not initialize: "+(e&&e.message?e.message:String(e))+". Open the browser developer console for details.";app.prepend(notice);}}});
+})();
+</script>
+</div>
+</body>
+</html>
